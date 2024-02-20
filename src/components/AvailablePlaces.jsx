@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import Places from './Places.jsx';
 import Error from './Error.jsx';
+import { sortPlacesByDistance } from '../loc.js'
+import { fetchAvailablePlaces } from '../http.js';
 
 export default function AvailablePlaces({ onSelectPlace }) {
   const [availablePlaces, setAvailablePlaces] = useState([]);
@@ -25,17 +27,17 @@ export default function AvailablePlaces({ onSelectPlace }) {
     async function fetchPlaces() {
 
       try {
-        const response = await fetch('http://localhost:3000/places');
-        const resData = await response.json();
-  
-        if (!response.ok) { //if ok, 200 or 300 status code
-          throw new Error('Failed to fetch places'); //this will crash the application, so need to use try/catch block
-        }  
-        setAvailablePlaces(resData.places);
+        const places = await fetchAvailablePlaces(); // must await this because every fn decorated with async will yield a promise!
+        //getCurrentPosition doesn't yield a promise so can't use async await, but can use callback pattern (function called after/from getCurrentPosition) to define code that should be executed once position is available 
+        navigator.geolocation.getCurrentPosition((position) => {
+          const sortedPlaces = sortPlacesByDistance(resData.places, position.coords.latitude, position.coords.longitude);
+          setAvailablePlaces(sortedPlaces);
+          setIsFetching(false);
+        })
       } catch (error) {
         setError({message: error.message || 'custom error message'})
+        setIsFetching(false);
       }
-      setIsFetching(false);
     }
     fetchPlaces();
   }, [])
